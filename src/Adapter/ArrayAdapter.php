@@ -102,15 +102,37 @@ class ArrayAdapter implements AdapterInterface
     {
         $row = [];
         $match = empty($search);
+        $allColMatch = true;
+        $colSearch = $state->getSearchColumns();
         foreach ($state->getDataTable()->getColumns() as $column) {
             $value = (!empty($propertyPath = $map[$column->getName()]) && $this->accessor->isReadable($result, $propertyPath)) ? $this->accessor->getValue($result, $propertyPath) : null;
             $value = $column->transform($value, $result);
             if (!$match) {
                 $match = (false !== mb_stripos($value, $search));
             }
+
+            if($allColMatch) {
+                if(isset($colSearch[$column->getName()])) {
+                    $colSearchVal = $colSearch[$column->getName()]['search'];
+                    $isRegex = $colSearch[$column->getName()]['regex'];
+                    if($colSearchVal && $isRegex) {
+                        $colMatch = mb_ereg_match($colSearchVal, $value);
+                    } elseif($colSearchVal) {
+                        $colMatch = (false !== mb_stripos($value, $colSearchVal));
+                    } else {
+                        $colMatch = false;
+                    }
+                } else {
+                    $colMatch = true;
+                }
+                if(!$colMatch) {
+                    $allColMatch = false;
+                }
+            }
+
             $row[$column->getName()] = $value;
         }
 
-        return $match ? $row : null;
+        return $match && $allColMatch ? $row : null;
     }
 }
